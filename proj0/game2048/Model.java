@@ -1,5 +1,6 @@
 package game2048;
 
+import javax.swing.*;
 import java.util.Formatter;
 import java.util.Observable;
 
@@ -106,18 +107,71 @@ public class Model extends Observable {
      *    value, then the leading two tiles in the direction of motion merge,
      *    and the trailing tile does not.
      * */
+
+
+    private int the_position_to_go(int COL, int ROW, boolean[] merged)
+    {
+        int latest = ROW;
+        for(int i = ROW + 1;i <= board.size() - 1;i ++)
+        {
+            if(tile(COL, i) == null)
+            {
+                latest = i;
+            }
+            else if(tile(COL, i).value() == tile(COL, ROW).value() && !merged[i])
+            {
+                latest = i;
+                break;
+            }
+            else
+            {
+                break;
+            }
+        }
+        if(latest == ROW)
+            return -1;
+        return latest;
+    }
+
+    private boolean operate_one_col(int COL)
+    {
+        boolean[] merged = new boolean[] {false, false, false, false}; // 第i行是否已经merge过了
+        boolean flag = false;
+        for(int j = board.size() - 2;j >= 0;j--)
+        {
+            if(tile(COL, j) == null)
+                continue;
+            int togoplace = the_position_to_go(COL, j, merged);
+            if(togoplace != -1)
+            {
+                if(board.move(COL, togoplace, tile(COL, j)))
+                {
+                    this.score += tile(COL, togoplace).value();
+                    merged[togoplace] = true;
+                }
+                flag = true;
+            }
+        }
+        return flag;
+    }
     public boolean tilt(Side side) {
         boolean changed;
         changed = false;
-
+        board.setViewingPerspective(side);
+        for(int i = 0;i < board.size();i++)
+        {
+            boolean flag = operate_one_col(i);
+            if(flag)
+                changed = true;
+        }
         // TODO: Modify this.board (and perhaps this.score) to account
         // for the tilt to the Side SIDE. If the board changed, set the
         // changed local variable to true.
-
         checkGameOver();
         if (changed) {
             setChanged();
         }
+        board.setViewingPerspective(Side.NORTH);
         return changed;
     }
 
@@ -137,7 +191,18 @@ public class Model extends Observable {
      *  Empty spaces are stored as null.
      * */
     public static boolean emptySpaceExists(Board b) {
-        // TODO: Fill in this function.
+        int size = b.size();
+
+        for(int i = 0;i < size;i++)
+        {
+            for(int j = 0;j < size;j++)
+            {
+                if(b.tile(i, j) == null)
+                {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -147,7 +212,17 @@ public class Model extends Observable {
      * given a Tile object t, we get its value with t.value().
      */
     public static boolean maxTileExists(Board b) {
-        // TODO: Fill in this function.
+        for(int i = 0;i < b.size();i++)
+        {
+            for(int j = 0;j < b.size();j++)
+            {
+                if(b.tile(i, j) == null)
+                    continue;
+                if(b.tile(i, j).value() == MAX_PIECE)
+                    return true;
+            }
+        }
+
         return false;
     }
 
@@ -158,7 +233,35 @@ public class Model extends Observable {
      * 2. There are two adjacent tiles with the same value.
      */
     public static boolean atLeastOneMoveExists(Board b) {
-        // TODO: Fill in this function.
+
+
+        /* first check if there is any empty block in this game */
+        for(Tile t : b)
+            if(t == null)
+                return true;
+
+        /* then check if the nearest to tiles can merge */
+
+        for(Side perspective: Side.values())
+        {
+            b.setViewingPerspective(perspective);
+            int size = b.size();
+            for(int i = 0;i < size;i++)
+            {
+                for(int j = 0;j < size;j++)
+                {
+                    if(i + 1 >= size || j + 1 >= size)
+                        continue;
+
+                    if(b.tile(i, j).value() == b.tile(i + 1, j).value())
+                    {
+                        b.setViewingPerspective(Side.NORTH);
+                        return true;
+                    }
+                }
+            }
+        }
+        b.setViewingPerspective(Side.NORTH);
         return false;
     }
 
